@@ -17,11 +17,15 @@ class Game(object):
         pass
 
     def render(self):
+        self.engine.window.make_current()
         gl.glClear(gl.GL_COLOR_BUFFER_BIT | gl.GL_DEPTH_BUFFER_BIT)
+        gl.glClearColor(0.5, 0.5, 0.5, 1.0)
+        self.engine.window.flip()
 
     def do_run(self, dt):
         self.update(dt)
         self.render()
+        print ('blah')
 
     def run(self):
         self.engine.run()

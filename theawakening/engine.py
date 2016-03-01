@@ -5,7 +5,6 @@ class SysEvents(object):
     def __init__(self, engine):
         self.engine = engine
         self.window = self.engine.window.window
-        self.eventLoop = pyglet.app.EventLoop()
         self.runFunc = lambda dt: None
 
         @self.window.event
@@ -55,8 +54,9 @@ class SysEvents(object):
 
                 self.runFunc(dt)
 
-                # Update timout
-                return inself.clock.get_sleep_time(True)
+                return 0
+
+        self.eventLoop = NewEventLoop()
 
     def set_run(self, function):
         self.runFunc = function
