@@ -67,48 +67,23 @@ class SysEvents(object):
     def stop(self):
         self.eventLoop.exit()
 
-class Window(object):
-    def __init__(self, title, width, height, fullscreen):
-        self.title = title
-        self.width = width
-        self.height = height
-        self.fullscreen = fullscreen
-        self.window = window.Window(width, height, resizable=True, caption=title, fullscreen=fullscreen)
-
-    def make_current(self):
-        self.window.switch_to()
-
-    def set_fullscreen(self, enabled):
-        self.window.set_fullscreen(fullscreen=enabled)
-
-    def set_vsync(self, enabled):
-        self.window.set_vsync(enabled)
-
-    def set_title(self, title):
-        self.window.set_caption(title)
-
-    def flip(self):
-        self.window.flip()
-
-class Cursor(object):
-    def __init__(self, engine):
-        self.engine = engine
-        self.window = engine.window.window
-        self.rel_mode = False
-
-    def is_relative(self):
-        return self.rel_mode
-
-    def set_relative(self, enabled):
-        self.rel_mode = enabled
-        self.window.set_exclusive_mouse(exclusive=enabled)
 
 class Engine(object):
     def __init__(self):
-        self.window = Window("The Awakening", 800, 600, False)
-        self.cursor = Cursor(self)
+        self.title = "The Awakening"
+        self.window = window.Window(800, 600, resizable=True,
+                caption=self.title, fullscreen=False)
+
         self.events = SysEvents(self)
         self.listeners = []
+        self.cursor_rel = False
+
+    def is_cursor_relative(self):
+        return self.cursor_rel
+
+    def relative_cursor(self, enabled):
+        self.cursor_rel = enabled
+        self.window.set_exclusive_mouse(exclusive=enabled)
 
     def add_listener(self, callback):
         self.listeners.append(callback)

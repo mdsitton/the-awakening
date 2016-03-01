@@ -17,7 +17,7 @@ class Game(object):
         pass
 
     def render(self):
-        self.engine.window.make_current()
+        self.engine.window.switch_to()
         gl.glClear(gl.GL_COLOR_BUFFER_BIT | gl.GL_DEPTH_BUFFER_BIT)
         gl.glClearColor(0.5, 0.5, 0.5, 1.0)
         self.engine.window.flip()
