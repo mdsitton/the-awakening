@@ -1,51 +1,57 @@
 from pyglet import window
 import pyglet
 
-class SysEvents(object):
-    def __init__(self, engine):
-        self.engine = engine
-        self.window = self.engine.window.window
+class Engine(object):
+    def __init__(self):
+        self.title = "The Awakening"
+
+        self.window = window.Window(800, 600, resizable=True,
+                caption=self.title, fullscreen=False)
+
+        self.listeners = []
+        self.cursor_rel = False
+
         self.runFunc = lambda dt: None
 
         @self.window.event
         def on_resize(width, height):
-            self.engine.broadcast_event('resize', (width, height))
+            self.broadcast_event('resize', (width, height))
 
         @self.window.event
         def on_key_release(symbol, modifiers):
-            self.engine.broadcast_event('key_up', (symbol, modifiers))
+            self.broadcast_event('key_up', (symbol, modifiers))
 
         @self.window.event
         def on_key_press(symbol, modifiers):
-            self.engine.broadcast_event('key_down', (symbol, modifiers))
+            self.broadcast_event('key_down', (symbol, modifiers))
 
         @self.window.event
         def on_mouse_motion(x, y, dx, dy):
-            if self.engine.cursor.is_relative():
+            if self.is_cursor_relative():
                 data = (dx, dy)
             else:
                 data = (x, y)
-            self.engine.broadcast_event('mouse_move', data)
+            self.broadcast_event('mouse_move', data)
 
         @self.window.event
         def on_mouse_press(x, y, button, modifiers):
-            self.engine.broadcast_event('mouse_down', (button, modifiers))
+            self.broadcast_event('mouse_down', (button, modifiers))
 
         @self.window.event
         def on_mouse_release(x, y, button, modifiers):
-            self.engine.broadcast_event('mouse_up', (button, modifiers))
+            self.broadcast_event('mouse_up', (button, modifiers))
 
         @self.window.event
         def on_mouse_scroll(x, y, dx, dy):
-            self.engine.broadcast_event('mouse_scroll', (x, y, dx, dy))
+            self.broadcast_event('mouse_scroll', (x, y, dx, dy))
 
         @self.window.event
         def on_close():
-            self.engine.broadcast_event('on_close', None)
+            self.broadcast_event('on_close', None)
 
         @self.window.event
         def on_window_close(window):
-            self.engine.broadcast_event('window_close', window)
+            self.broadcast_event('window_close', window)
 
         class NewEventLoop(pyglet.app.EventLoop):
             def idle(inself):
@@ -57,26 +63,6 @@ class SysEvents(object):
                 return 0
 
         self.eventLoop = NewEventLoop()
-
-    def set_run(self, function):
-        self.runFunc = function
-
-    def run(self):
-        self.eventLoop.run()
-
-    def stop(self):
-        self.eventLoop.exit()
-
-
-class Engine(object):
-    def __init__(self):
-        self.title = "The Awakening"
-        self.window = window.Window(800, 600, resizable=True,
-                caption=self.title, fullscreen=False)
-
-        self.events = SysEvents(self)
-        self.listeners = []
-        self.cursor_rel = False
 
     def is_cursor_relative(self):
         return self.cursor_rel
@@ -96,10 +82,10 @@ class Engine(object):
             listener(event, data)
 
     def register_run(self, callback):
-        self.events.set_run(callback)
+        self.runFunc = callback
 
     def run(self):
-        self.events.run()
+        self.eventLoop.run()
 
     def stop(self):
-        self.events.stop()
+        self.eventLoop.exit()
