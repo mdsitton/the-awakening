@@ -30,6 +30,13 @@ class Engine(object):
                     data = (x, y)
                 self.broadcast_event('mouse_move', data)
 
+            def on_mouse_drag(wself, x, y, dx, dy, buttons, modifiers):
+                if self.is_cursor_relative():
+                    data = (dx, dy)
+                else:
+                    data = (x, y)
+                self.broadcast_event('mouse_move', data)
+
             def on_mouse_press(wself, x, y, button, modifiers):
 
                 self.broadcast_event('mouse_move', (x, y))
