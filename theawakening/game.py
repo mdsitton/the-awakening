@@ -137,7 +137,6 @@ class Game(object):
     def do_run(self, dt):
         self.update(dt)
         self.render()
-        print ('blah')
 
     def run(self):
         self.engine.run()
