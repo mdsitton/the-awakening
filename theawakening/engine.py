@@ -65,6 +65,7 @@ class Engine(object):
 
         self.window = MyWindow(800, 600, resizable=True,
                 caption=self.title, fullscreen=False)
+        self.window.set_vsync(False)
 
         self.eventLoop = NewEventLoop()
 
