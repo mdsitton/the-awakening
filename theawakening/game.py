@@ -23,6 +23,30 @@ class SelectionBox(object):
     def set_end(self, x, y):
         self.endX = float(x)
         self.endY = float(y)
+    
+    def get_selected(self, objects):
+        selected = []
+        
+        if self.startX > self.endX:
+            x1 = self.endX
+            x2 = self.startX
+        else:
+            x2 = self.endX
+            x1 = self.startX
+
+        if self.startY > self.endY:
+            y1 = self.endY
+            y2 = self.startY
+        else:
+            y2 = self.endY
+            y1 = self.startY
+        
+        for obj in objects:
+            rec = obj.rect
+            if rec.x1 >= x1 and rec.x2 <= x2 and rec.y1 >= y1 and rec.y2 <= y2:
+                selected.append(obj)
+        
+        return selected
 
     def render(self):
         gl.glLineWidth(1.0)
@@ -51,18 +75,49 @@ class SelectionBox(object):
         gl.glDrawArrays(gl.GL_LINES, 0, len(points)//2)
         gl.glDisableClientState(gl.GL_VERTEX_ARRAY)
 
+class Rect(object):
+    def __init__(self, x1,y1,x2,y2):
+        self.x1 = x1
+        self.y1 = y1
+        self.x2 = x2
+        self.y2 = y2
+
+class Unit(object):
+    def __init__(self, imgPath, name):
+        img = pyglet.image.load('data/player.png')
+        self.sprite = pyglet.sprite.Sprite(img)
+        self.posX = 0
+        self.posY = 0
+        self.width = self.sprite.width
+        self.height = self.sprite.height
+        self.update_rect()
+       
+    def update_rect(self): 
+        self.rect = Rect(self.posX, self.posY, self.posX + self.width, self.posY + self.height)
+    
+    def set_pos(self, x, y):
+        self.posX = x
+        self.posY = y
+        self.sprite.x = x
+        self.sprite.y = y
+        
+        self.update_rect()
+    
+    def render(self):
+        self.sprite.draw()
+
 class Game(object):
     def __init__(self):
         self.engine = Engine()
 
         self.engine.add_listener(self.process_events)
         self.engine.register_run(self.do_run)
-        playerImg = pyglet.image.load('data/player.png')
-        self.player = pyglet.sprite.Sprite(playerImg)
+        self.units = []
 
         self.selecting = False
         self.select = SelectionBox()
         self.select.set_start(0,0)
+        self.selected = None
 
         self.mouseX = 0
         self.mouseY = 0
@@ -105,14 +160,10 @@ class Game(object):
         gl.glMatrixMode(gl.GL_MODELVIEW)
 
     def update(self, dt):
-        if pyglet.window.key.W in self.keys:
-            self.player.y += 50 * dt
-        if pyglet.window.key.A in self.keys:
-            self.player.x -= 50 * dt
-        if pyglet.window.key.S in self.keys:
-            self.player.y -= 50 * dt
-        if pyglet.window.key.D in self.keys:
-            self.player.x += 50 * dt
+        if pyglet.window.key.E in self.keys:
+            unit = Unit('data/player.png', 'unit')
+            unit.set_pos(self.mouseX, self.mouseY)
+            self.units.append(unit)
 
         if 1 in self.mouseButtons:
             if not self.selecting:
@@ -129,7 +180,16 @@ class Game(object):
         self.engine.window.switch_to()
         gl.glClear(gl.GL_COLOR_BUFFER_BIT | gl.GL_DEPTH_BUFFER_BIT)
         gl.glClearColor(0.5, 0.5, 0.5, 1.0)
-        self.player.draw()
+        
+        
+        if not self.selecting:
+            units = self.units
+        else:
+            units = self.select.get_selected(self.units)
+        
+        for unit in units:
+            unit.render()
+        
         if self.selecting:
             self.select.render()
         self.engine.window.flip()
