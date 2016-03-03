@@ -63,6 +63,10 @@ class Rect(object):
 class BoundingBoxMixin(object):
     def __init__(self):
         self.ctPoints = None
+        self.bbColor = (1.0, 1.0, 1.0)
+
+    def set_bb_color(self, r, g, b):
+        self.bbColor = (r, g, b)
 
     def render_bounding_box(self):
         gl.glLineWidth(1.0)
@@ -85,7 +89,7 @@ class BoundingBoxMixin(object):
         self.ctPoints = (gl.GLfloat * len(points))(*points)
         point_ptr = ct.cast(self.ctPoints, ct.c_void_p)
 
-        gl.glColor3f(0.0, 0.0, 0.0)
+        gl.glColor3f(*self.bbColor)
         gl.glEnableClientState(gl.GL_VERTEX_ARRAY)
         gl.glVertexPointer(2, gl.GL_FLOAT, 0, point_ptr)
         gl.glDrawArrays(gl.GL_LINES, 0, len(points)//2)
@@ -93,7 +97,7 @@ class BoundingBoxMixin(object):
 
 class SelectionBox(BoundingBoxMixin):
     def __init__(self):
-
+        super(SelectionBox, self).__init__()
         self.rect = Rect(Vector(2), Vector(2))
 
     def set_start(self, vec):
@@ -131,12 +135,14 @@ class SelectionBox(BoundingBoxMixin):
 
 class Unit(BoundingBoxMixin):
     def __init__(self, imgPath, name):
+        super(Unit, self).__init__()
         img = pyglet.image.load('data/player.png')
         self.sprite = pyglet.sprite.Sprite(img)
         self.pos = Vector(2)
         self.rect = Rect(Vector(2), Vector(2))
         self.width = self.sprite.width
         self.height = self.sprite.height
+        self.set_bb_color(0.0, 0.0, 0.0)
         self.update_rect()
 
     def update_rect(self):
