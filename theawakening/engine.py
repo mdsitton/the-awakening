@@ -63,7 +63,7 @@ class Engine(object):
 
                 return 0
 
-        self.window = MyWindow(800, 600, resizable=True,
+        self.window = MyWindow(1280, 720, resizable=True,
                 caption=self.title, fullscreen=False)
         self.window.set_vsync(False)
 
