@@ -4,121 +4,81 @@ import pyglet
 
 from pyglet import gl
 
+from gem import vector
+
 import ctypes as ct
 import math
 
-class SelectionBox(object):
-    def __init__(self):
-        self.startX = 0
-        self.startY = 0
+# This is to make up for some missing functionality from GEM and fix some bugs
+class Vector(vector.Vector):
 
-        self.endX = 0
-        self.endY = 0
+    def clone(self):
+        return Vector(self.size, data=self.vector[:]) # fix slight bug since vector contents are not copied
 
-        self.ctPoints = None
+    def distance(self, other):
+        return self.magnitude(self - other)
 
-    def set_start(self, x, y):
-        self.endX = self.startX = float(x)
-        self.endX = self.startY = float(y)
+    @property
+    def x(self):
+        return self.vector[0]
 
-    def set_end(self, x, y):
-        self.endX = float(x)
-        self.endY = float(y)
+    @x.setter
+    def x(self, val):
+        self.vector[0] = val
 
-    def get_selected(self, objects):
-        selected = []
+    @property
+    def y(self):
+        return self.vector[1]
 
-        if self.startX > self.endX:
-            x1 = self.endX
-            x2 = self.startX
-        else:
-            x2 = self.endX
-            x1 = self.startX
+    @y.setter
+    def y(self, val):
+        self.vector[1] = val
 
-        if self.startY > self.endY:
-            y1 = self.endY
-            y2 = self.startY
-        else:
-            y2 = self.endY
-            y1 = self.startY
+    @property
+    def z(self):
+        return self.vector[2]
 
-        for obj in objects:
-            rec = obj.rect
-            if rec.x1 >= x1 and rec.x2 <= x2 and rec.y1 >= y1 and rec.y2 <= y2:
-                selected.append(obj)
+    @z.setter
+    def z(self, val):
+        self.vector[2] = val
 
-        return selected
+    @property
+    def w(self):
+        return self.vector[3]
 
-    def render(self):
-        gl.glLineWidth(1.0)
+    @w.setter
+    def w(self, val):
+        self.vector[3] = val
 
-        points = [
-            self.startX, self.startY,
-            self.endX, self.startY,
+# monkey patch it
+vector.Vector = Vector
 
-            self.endX, self.startY,
-            self.endX, self.endY,
-
-            self.endX, self.endY,
-            self.startX, self.endY,
-
-            self.startX, self.endY,
-            self.startX, self.startY,
-        ]
-
-
-        self.ctPoints = (gl.GLfloat * len(points))(*points)
-        point_ptr = ct.cast(self.ctPoints, ct.c_void_p)
-
-        gl.glColor3f(1.0, 1.0, 1.0)
-        gl.glEnableClientState(gl.GL_VERTEX_ARRAY)
-        gl.glVertexPointer(2, gl.GL_FLOAT, 0, point_ptr)
-        gl.glDrawArrays(gl.GL_LINES, 0, len(points)//2)
-        gl.glDisableClientState(gl.GL_VERTEX_ARRAY)
 
 class Rect(object):
-    def __init__(self, x1,y1,x2,y2):
-        self.x1 = x1
-        self.y1 = y1
-        self.x2 = x2
-        self.y2 = y2
+    def __init__(self, minVec, maxVec):
+        self.min = minVec
+        self.max = maxVec
 
-class Unit(object):
-    def __init__(self, imgPath, name):
-        img = pyglet.image.load('data/player.png')
-        self.sprite = pyglet.sprite.Sprite(img)
-        self.posX = 0
-        self.posY = 0
-        self.width = self.sprite.width
-        self.height = self.sprite.height
-        self.update_rect()
 
-    def update_rect(self):
-        self.rect = Rect(self.posX, self.posY, self.posX + self.width, self.posY + self.height)
-
-    def set_pos(self, x, y):
-        self.posX = x
-        self.posY = y
-        self.sprite.x = x
-        self.sprite.y = y
-
-        self.update_rect()
+class BoundingBoxMixin(object):
+    def __init__(self):
+        self.ctPoints = None
 
     def render_bounding_box(self):
         gl.glLineWidth(1.0)
 
         points = [
-            self.rect.x1, self.rect.y1,
-            self.rect.x2, self.rect.y1,
+            self.rect.min.x, self.rect.min.y,
+            self.rect.max.x, self.rect.min.y,
 
-            self.rect.x2, self.rect.y1,
-            self.rect.x2, self.rect.y2,
+            self.rect.max.x, self.rect.min.y,
+            self.rect.max.x, self.rect.max.y,
 
-            self.rect.x2, self.rect.y2,
-            self.rect.x1, self.rect.y2,
+            self.rect.max.x, self.rect.max.y,
+            self.rect.min.x, self.rect.max.y,
 
-            self.rect.x1, self.rect.y2,
-            self.rect.x1, self.rect.y1,
+            self.rect.min.x, self.rect.max.y,
+            self.rect.min.x, self.rect.min.y,
         ]
 
 
@@ -130,6 +90,69 @@ class Unit(object):
         gl.glVertexPointer(2, gl.GL_FLOAT, 0, point_ptr)
         gl.glDrawArrays(gl.GL_LINES, 0, len(points)//2)
         gl.glDisableClientState(gl.GL_VERTEX_ARRAY)
+
+class SelectionBox(BoundingBoxMixin):
+    def __init__(self):
+
+        self.rect = Rect(Vector(2), Vector(2))
+
+    def set_start(self, vec):
+        self.rect.min = vec.clone()
+
+    def set_end(self, vec):
+        self.rect.max = vec.clone()
+
+    def get_selected(self, objects):
+        selected = []
+
+        if self.rect.min.x > self.rect.max.x:
+            x1 = self.rect.max.x
+            x2 = self.rect.min.x
+        else:
+            x2 = self.rect.max.x
+            x1 = self.rect.min.x
+
+        if self.rect.min.y > self.rect.max.y:
+            y1 = self.rect.max.y
+            y2 = self.rect.min.y
+        else:
+            y2 = self.rect.max.y
+            y1 = self.rect.min.y
+
+        for obj in objects:
+            rec = obj.rect
+            if rec.min.x >= x1 and rec.max.x <= x2 and rec.min.y >= y1 and rec.max.y <= y2:
+                selected.append(obj)
+
+        return selected
+
+    def render(self):
+        self.render_bounding_box()
+
+class Unit(BoundingBoxMixin):
+    def __init__(self, imgPath, name):
+        img = pyglet.image.load('data/player.png')
+        self.sprite = pyglet.sprite.Sprite(img)
+        self.pos = Vector(2)
+        self.rect = Rect(Vector(2), Vector(2))
+        self.width = self.sprite.width
+        self.height = self.sprite.height
+        self.update_rect()
+
+    def update_rect(self):
+        self.rect.min = self.pos
+        self.rect.max.x = self.pos.x + self.width
+        self.rect.max.y = self.pos.y + self.height
+
+    def set_pos(self, vec):
+        self.pos = vec.clone()
+
+        self.update_rect()
+
+    def update(self, dt):
+        self.sprite.x = self.pos.x
+        self.sprite.y = self.pos.y
+
 
     def render(self):
         self.sprite.draw()
@@ -144,36 +167,29 @@ class Game(object):
 
         self.selecting = False
         self.select = SelectionBox()
-        self.select.set_start(0,0)
         self.selected = None
         self.unitsSelected = []
 
-        self.mouseX = 0
-        self.mouseY = 0
-        self.currentClickX = None
-        self.currentClickY = None
+        self.mousePos = Vector(2)
+        self.currentClick = Vector(2)
         self.mouseButtons = []
 
         self.keys = []
 
     def process_events(self, event, data):
         if event == 'mouse_move':
-            if self.engine.is_cursor_relative():
-                self.mouseRelX = data[0]
-                self.mouseRelY = data[1]
-            else:
-                self.mouseX = data[0]
-                self.mouseY = data[1]
+            x, y = data
+            self.mousePos.x = x
+            self.mousePos.y = y
 
         elif event == 'mouse_down':
             button, modifiers = data
             self.mouseButtons.append(button)
-            self.currentClickX = self.mouseX
-            self.currentClickY = self.mouseY
+            self.currentClick = self.mousePos.clone()
         elif event == 'mouse_up':
             button, modifiers = data
             self.mouseButtons.remove(button)
-            if self.currentClickX == self.mouseX and self.currentClickY == self.mouseY:
+            if self.currentClick.x == self.mousePos.x and self.currentClick.y == self.mousePos.y:
                 self.unitsSelected = []
         elif event == 'key_down':
             self.keys.append(data[0])
@@ -195,48 +211,45 @@ class Game(object):
         gl.glMatrixMode(gl.GL_MODELVIEW)
 
     def update(self, dt):
+
         if pyglet.window.key.E in self.keys:
             unit = Unit('data/player.png', 'unit')
-            unit.set_pos(self.mouseX, self.mouseY)
+            unit.set_pos(self.mousePos)
             self.units.append(unit)
         elif pyglet.window.key.M in self.keys:
             speedPerTick = 100.0 * dt
             for obj in self.unitsSelected:
-                objx = obj.rect.x1
-                objy = obj.rect.y1
+                objMin = obj.pos
 
-                deltax = self.mouseX - objx
-                deltay = self.mouseY - objy
+                delta = self.mousePos - objMin
 
-                distance = math.sqrt((deltax * deltax) + (deltay * deltay))
+                distance = delta.magnitude()
 
                 if distance > speedPerTick:
                     ratio = speedPerTick / distance
-                    moveX = deltax * ratio
-                    moveY = deltay * ratio
-
-
-                    finalX = objx + moveX
-                    finalY = objy + moveY
+                    move = delta * ratio
+                    final = objMin + move
 
                 else:
-                    finalX = self.mouseX
-                    finalY = self.mouseY
+                    final = self.mousePos.clone()
 
-                obj.set_pos(finalX, finalY)
+                obj.set_pos(final)
 
         if 1 in self.mouseButtons:
             if not self.selecting:
-                if self.currentClickX != self.mouseX and self.currentClickY != self.mouseY:
+                if self.currentClick.x != self.mousePos.x and self.currentClick.y != self.mousePos.y:
                     self.selecting = True
-                    self.select.set_start(self.mouseX, self.mouseY)
+                    self.select.set_start(self.mousePos)
         else:
             if self.selecting:
                 self.selecting = False
 
         if self.selecting:
-            self.select.set_end(self.mouseX, self.mouseY)
+            self.select.set_end(self.mousePos)
             self.unitsSelected = self.select.get_selected(self.units)
+
+        for unit in self.units:
+            unit.update(dt)
 
     def render(self):
         self.engine.window.switch_to()
