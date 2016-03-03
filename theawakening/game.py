@@ -5,6 +5,7 @@ import pyglet
 from pyglet import gl
 
 import ctypes as ct
+import math
 
 class SelectionBox(object):
     def __init__(self):
@@ -23,10 +24,10 @@ class SelectionBox(object):
     def set_end(self, x, y):
         self.endX = float(x)
         self.endY = float(y)
-    
+
     def get_selected(self, objects):
         selected = []
-        
+
         if self.startX > self.endX:
             x1 = self.endX
             x2 = self.startX
@@ -40,12 +41,12 @@ class SelectionBox(object):
         else:
             y2 = self.endY
             y1 = self.startY
-        
+
         for obj in objects:
             rec = obj.rect
             if rec.x1 >= x1 and rec.x2 <= x2 and rec.y1 >= y1 and rec.y2 <= y2:
                 selected.append(obj)
-        
+
         return selected
 
     def render(self):
@@ -91,18 +92,45 @@ class Unit(object):
         self.width = self.sprite.width
         self.height = self.sprite.height
         self.update_rect()
-       
-    def update_rect(self): 
+
+    def update_rect(self):
         self.rect = Rect(self.posX, self.posY, self.posX + self.width, self.posY + self.height)
-    
+
     def set_pos(self, x, y):
         self.posX = x
         self.posY = y
         self.sprite.x = x
         self.sprite.y = y
-        
+
         self.update_rect()
-    
+
+    def render_bounding_box(self):
+        gl.glLineWidth(1.0)
+
+        points = [
+            self.rect.x1, self.rect.y1,
+            self.rect.x2, self.rect.y1,
+
+            self.rect.x2, self.rect.y1,
+            self.rect.x2, self.rect.y2,
+
+            self.rect.x2, self.rect.y2,
+            self.rect.x1, self.rect.y2,
+
+            self.rect.x1, self.rect.y2,
+            self.rect.x1, self.rect.y1,
+        ]
+
+
+        self.ctPoints = (gl.GLfloat * len(points))(*points)
+        point_ptr = ct.cast(self.ctPoints, ct.c_void_p)
+
+        gl.glColor3f(0.0, 0.0, 0.0)
+        gl.glEnableClientState(gl.GL_VERTEX_ARRAY)
+        gl.glVertexPointer(2, gl.GL_FLOAT, 0, point_ptr)
+        gl.glDrawArrays(gl.GL_LINES, 0, len(points)//2)
+        gl.glDisableClientState(gl.GL_VERTEX_ARRAY)
+
     def render(self):
         self.sprite.draw()
 
@@ -118,9 +146,12 @@ class Game(object):
         self.select = SelectionBox()
         self.select.set_start(0,0)
         self.selected = None
+        self.unitsSelected = []
 
         self.mouseX = 0
         self.mouseY = 0
+        self.currentClickX = None
+        self.currentClickY = None
         self.mouseButtons = []
 
         self.keys = []
@@ -137,9 +168,13 @@ class Game(object):
         elif event == 'mouse_down':
             button, modifiers = data
             self.mouseButtons.append(button)
+            self.currentClickX = self.mouseX
+            self.currentClickY = self.mouseY
         elif event == 'mouse_up':
             button, modifiers = data
             self.mouseButtons.remove(button)
+            if self.currentClickX == self.mouseX and self.currentClickY == self.mouseY:
+                self.unitsSelected = []
         elif event == 'key_down':
             self.keys.append(data[0])
         elif event == 'key_up':
@@ -164,32 +199,55 @@ class Game(object):
             unit = Unit('data/player.png', 'unit')
             unit.set_pos(self.mouseX, self.mouseY)
             self.units.append(unit)
+        elif pyglet.window.key.M in self.keys:
+            speedPerTick = 100.0 * dt
+            for obj in self.unitsSelected:
+                objx = obj.rect.x1
+                objy = obj.rect.y1
+
+                deltax = self.mouseX - objx
+                deltay = self.mouseY - objy
+
+                distance = math.sqrt((deltax * deltax) + (deltay * deltay))
+
+                if distance > speedPerTick:
+                    ratio = speedPerTick / distance
+                    moveX = deltax * ratio
+                    moveY = deltay * ratio
+
+
+                    finalX = objx + moveX
+                    finalY = objy + moveY
+
+                else:
+                    finalX = self.mouseX
+                    finalY = self.mouseY
+
+                obj.set_pos(finalX, finalY)
 
         if 1 in self.mouseButtons:
             if not self.selecting:
-                self.selecting = True
-                self.select.set_start(self.mouseX, self.mouseY)
+                if self.currentClickX != self.mouseX and self.currentClickY != self.mouseY:
+                    self.selecting = True
+                    self.select.set_start(self.mouseX, self.mouseY)
         else:
             if self.selecting:
                 self.selecting = False
 
         if self.selecting:
             self.select.set_end(self.mouseX, self.mouseY)
+            self.unitsSelected = self.select.get_selected(self.units)
 
     def render(self):
         self.engine.window.switch_to()
         gl.glClear(gl.GL_COLOR_BUFFER_BIT | gl.GL_DEPTH_BUFFER_BIT)
         gl.glClearColor(0.5, 0.5, 0.5, 1.0)
-        
-        
-        if not self.selecting:
-            units = self.units
-        else:
-            units = self.select.get_selected(self.units)
-        
-        for unit in units:
+
+        for unit in self.units:
+            if unit in self.unitsSelected:
+                unit.render_bounding_box()
             unit.render()
-        
+
         if self.selecting:
             self.select.render()
         self.engine.window.flip()
