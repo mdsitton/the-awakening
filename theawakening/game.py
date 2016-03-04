@@ -20,11 +20,21 @@ class Vector(vector.Vector):
 
     def __eq__(self, vecB):
         if isinstance(vecB, Vector):
-            for i in sm.range(self.size):
+            for i in range(self.size):
                 if self.vector[i] != vecB.vector[i]:
                     return False
             else:
                 return True
+        else:
+            return NotImplemented
+
+    def __ne__(self, vecB):
+        if isinstance(vecB, Vector):
+            for i in range(self.size):
+                if self.vector[i] != vecB.vector[i]:
+                    return True
+            else:
+                return False
         else:
             return NotImplemented
 
