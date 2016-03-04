@@ -78,6 +78,9 @@ class Rect(object):
         self.min = minVec
         self.max = maxVec
 
+    def clone(self):
+        return Rect(self.min.clone(), self.max.clone())
+
     def check_aabb(self, rect2):
         return (self.max.x >= rect2.min.x and
                rect2.max.x >= self.min.x and
@@ -97,7 +100,8 @@ class BoundingBoxMixin(object):
     def render_bounding_box(self):
         gl.glLineWidth(1.0)
 
-        points = [
+
+        self.ctPoints = (gl.GLfloat * 16)(
             self.rect.min.x, self.rect.min.y,
             self.rect.max.x, self.rect.min.y,
 
@@ -109,16 +113,13 @@ class BoundingBoxMixin(object):
 
             self.rect.min.x, self.rect.max.y,
             self.rect.min.x, self.rect.min.y,
-        ]
-
-
-        self.ctPoints = (gl.GLfloat * len(points))(*points)
+        )
         point_ptr = ct.cast(self.ctPoints, ct.c_void_p)
 
         gl.glColor3f(*self.bbColor)
         gl.glEnableClientState(gl.GL_VERTEX_ARRAY)
         gl.glVertexPointer(2, gl.GL_FLOAT, 0, point_ptr)
-        gl.glDrawArrays(gl.GL_LINES, 0, len(points)//2)
+        gl.glDrawArrays(gl.GL_LINES, 0, 8)
         gl.glDisableClientState(gl.GL_VERTEX_ARRAY)
 
 
@@ -136,7 +137,7 @@ class SelectionBox(BoundingBoxMixin):
     def get_selected(self, objects):
         selected = []
 
-        rect = Rect(self.rect.min.clone(), self.rect.max.clone())
+        rect = self.rect.clone()
 
         if self.rect.min.x > self.rect.max.x:
             rect.min.x = self.rect.max.x
