@@ -263,6 +263,10 @@ class Game(object):
                     final = self.mousePos
 
                 obj.set_pos(final)
+        elif pyglet.window.key.DELETE in self.keys:
+            for obj in self.unitsSelected:
+                self.units.remove(obj)
+            self.unitsSelected = []
 
         if 1 in self.mouseButtons:
             if not self.selecting:
