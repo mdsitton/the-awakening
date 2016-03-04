@@ -18,6 +18,16 @@ class Vector(vector.Vector):
     def distance(self, other):
         return self.magnitude(self - other)
 
+    def __eq__(self, vecB):
+        if isinstance(vecB, Vector):
+            for i in sm.range(self.size):
+                if self.vector[i] != vecB.vector[i]:
+                    return False
+            else:
+                return True
+        else:
+            return NotImplemented
+
     @property
     def x(self):
         return self.vector[0]
@@ -246,7 +256,7 @@ class Game(object):
 
         if 1 in self.mouseButtons:
             if not self.selecting:
-                if self.currentClick.x != self.mousePos.x and self.currentClick.y != self.mousePos.y:
+                if self.currentClick != self.mousePos:
                     self.selecting = True
                     self.select.set_start(self.mousePos)
         else:
