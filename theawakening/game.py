@@ -240,7 +240,7 @@ class Game(object):
                     final = objMin + move
 
                 else:
-                    final = self.mousePos.clone()
+                    final = self.mousePos
 
                 obj.set_pos(final)
 
