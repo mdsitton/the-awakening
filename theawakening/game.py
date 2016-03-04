@@ -9,70 +9,6 @@ from gem import vector
 import ctypes as ct
 import math
 
-# This is to make up for some missing functionality from GEM and fix some bugs
-class Vector(vector.Vector):
-
-    def clone(self):
-        return Vector(self.size, data=self.vector[:]) # fix slight bug since vector contents are not copied
-
-    def distance(self, other):
-        return self.magnitude(self - other)
-
-    def __eq__(self, vecB):
-        if isinstance(vecB, Vector):
-            for i in range(self.size):
-                if self.vector[i] != vecB.vector[i]:
-                    return False
-            else:
-                return True
-        else:
-            return NotImplemented
-
-    def __ne__(self, vecB):
-        if isinstance(vecB, Vector):
-            for i in range(self.size):
-                if self.vector[i] != vecB.vector[i]:
-                    return True
-            else:
-                return False
-        else:
-            return NotImplemented
-
-    @property
-    def x(self):
-        return self.vector[0]
-
-    @x.setter
-    def x(self, val):
-        self.vector[0] = val
-
-    @property
-    def y(self):
-        return self.vector[1]
-
-    @y.setter
-    def y(self, val):
-        self.vector[1] = val
-
-    @property
-    def z(self):
-        return self.vector[2]
-
-    @z.setter
-    def z(self, val):
-        self.vector[2] = val
-
-    @property
-    def w(self):
-        return self.vector[3]
-
-    @w.setter
-    def w(self, val):
-        self.vector[3] = val
-
-# monkey patch it
-vector.Vector = Vector
-
 class Rect(object):
     def __init__(self, minVec, maxVec):
         self.min = minVec
@@ -100,7 +36,6 @@ class BoundingBoxMixin(object):
     def render_bounding_box(self):
         gl.glLineWidth(1.0)
 
-
         self.ctPoints = (gl.GLfloat * 16)(
             self.rect.min.x, self.rect.min.y,
             self.rect.max.x, self.rect.min.y,
@@ -114,6 +49,7 @@ class BoundingBoxMixin(object):
             self.rect.min.x, self.rect.max.y,
             self.rect.min.x, self.rect.min.y,
         )
+
         point_ptr = ct.cast(self.ctPoints, ct.c_void_p)
 
         gl.glColor3f(*self.bbColor)
@@ -126,7 +62,7 @@ class BoundingBoxMixin(object):
 class SelectionBox(BoundingBoxMixin):
     def __init__(self):
         super(SelectionBox, self).__init__()
-        self.rect = Rect(Vector(2), Vector(2))
+        self.rect = Rect(vector.Vector(2), vector.Vector(2))
 
     def set_start(self, vec):
         self.rect.min = vec.clone()
@@ -162,8 +98,8 @@ class Unit(BoundingBoxMixin):
         super(Unit, self).__init__()
         img = pyglet.image.load('data/player.png')
         self.sprite = pyglet.sprite.Sprite(img)
-        self.pos = Vector(2)
-        self.rect = Rect(Vector(2), Vector(2))
+        self.pos = vector.Vector(2)
+        self.rect = Rect(vector.Vector(2), vector.Vector(2))
         self.width = self.sprite.width
         self.height = self.sprite.height
         self.set_bb_color(0.0, 0.0, 0.0)
@@ -200,8 +136,8 @@ class Game(object):
         self.selected = None
         self.unitsSelected = []
 
-        self.mousePos = Vector(2)
-        self.currentClick = Vector(2)
+        self.mousePos = vector.Vector(2)
+        self.currentClick = vector.Vector(2)
         self.mouseButtons = []
 
         self.keys = []
