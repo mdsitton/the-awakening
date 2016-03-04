@@ -53,11 +53,17 @@ class Vector(vector.Vector):
 # monkey patch it
 vector.Vector = Vector
 
-
 class Rect(object):
     def __init__(self, minVec, maxVec):
         self.min = minVec
         self.max = maxVec
+
+    def check_aabb(self, rect2):
+        return (self.max.x >= rect2.min.x and
+               rect2.max.x >= self.min.x and
+
+               self.max.y >= rect2.min.y and
+               rect2.max.y >= self.min.y)
 
 
 class BoundingBoxMixin(object):
@@ -95,6 +101,7 @@ class BoundingBoxMixin(object):
         gl.glDrawArrays(gl.GL_LINES, 0, len(points)//2)
         gl.glDisableClientState(gl.GL_VERTEX_ARRAY)
 
+
 class SelectionBox(BoundingBoxMixin):
     def __init__(self):
         super(SelectionBox, self).__init__()
@@ -109,23 +116,19 @@ class SelectionBox(BoundingBoxMixin):
     def get_selected(self, objects):
         selected = []
 
+        rect = Rect(self.rect.min.clone(), self.rect.max.clone())
+
         if self.rect.min.x > self.rect.max.x:
-            x1 = self.rect.max.x
-            x2 = self.rect.min.x
-        else:
-            x2 = self.rect.max.x
-            x1 = self.rect.min.x
+            rect.min.x = self.rect.max.x
+            rect.max.x = self.rect.min.x
 
         if self.rect.min.y > self.rect.max.y:
-            y1 = self.rect.max.y
-            y2 = self.rect.min.y
-        else:
-            y2 = self.rect.max.y
-            y1 = self.rect.min.y
+            rect.min.y = self.rect.max.y
+            rect.max.y = self.rect.min.y
 
         for obj in objects:
             rec = obj.rect
-            if rec.min.x >= x1 and rec.max.x <= x2 and rec.min.y >= y1 and rec.max.y <= y2:
+            if rect.check_aabb(rec):
                 selected.append(obj)
 
         return selected
