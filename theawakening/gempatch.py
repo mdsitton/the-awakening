@@ -31,6 +31,14 @@ class Vector(vector.Vector):
         else:
             return NotImplemented
 
+    def __truediv__(self, scalar):
+        if isinstance(scalar, int) or isinstance(scalar, float):
+            vecList = vector.vec_div(self.size, self.vector, scalar)
+            return Vector(self.size, data=vecList)
+        else:
+            return NotImplemented
+
+
     @property
     def x(self):
         return self.vector[0]
