@@ -7,6 +7,7 @@ from pyglet import gl
 from gem import vector
 
 import ctypes as ct
+import random
 import math
 
 class Rect(object):
@@ -28,6 +29,7 @@ class Rect(object):
 class BoundingBoxMixin(object):
     def __init__(self):
         self.ctPoints = None
+        self.ctPointT = (gl.GLfloat * 16)
         self.bbColor = (1.0, 1.0, 1.0)
 
     def set_bb_color(self, r, g, b):
@@ -36,7 +38,7 @@ class BoundingBoxMixin(object):
     def render_bounding_box(self):
         gl.glLineWidth(1.0)
 
-        self.ctPoints = (gl.GLfloat * 16)(
+        self.ctPoints = self.ctPointT(
             self.rect.min.x, self.rect.min.y,
             self.rect.max.x, self.rect.min.y,
 
@@ -93,6 +95,7 @@ class SelectionBox(BoundingBoxMixin):
     def render(self):
         self.render_bounding_box()
 
+
 class Unit(BoundingBoxMixin):
     def __init__(self, imgPath, name):
         super(Unit, self).__init__()
@@ -123,6 +126,17 @@ class Unit(BoundingBoxMixin):
     def render(self):
         self.sprite.draw()
 
+class Particle(object):
+    def __init__(self):
+        pos = [random.random()*1280.0, 720.0]
+        self.position = vector.Vector(2, data=pos)
+        self.velocity = vector.Vector(2, data=[random.random()*10, random.random()*10])
+        self.mass = 1.0 + random.random()
+        self.rect = Rect(self.position.clone(), self.position.clone())
+
+    def update(self, dt):
+        self.rect = Rect(self.position.clone(), self.position.clone())
+
 class Game(object):
     def __init__(self):
         self.engine = Engine()
@@ -130,6 +144,11 @@ class Game(object):
         self.engine.add_listener(self.process_events)
         self.engine.register_run(self.do_run)
         self.units = []
+
+        self.width = 0
+        self.height = 0
+
+        self.screenRect = Rect(vector.Vector(2), vector.Vector(2, data=[self.width, self.height]))
 
         self.selecting = False
         self.select = SelectionBox()
@@ -140,7 +159,14 @@ class Game(object):
         self.currentClick = vector.Vector(2)
         self.mouseButtons = []
 
+        self.points = []
+        for i in range(10):
+            self.points.append(Particle())
+        self.ctPoints = None
+
         self.keys = []
+
+
 
     def process_events(self, event, data):
         if event == 'mouse_move':
@@ -168,8 +194,11 @@ class Game(object):
             self.engine.stop()
 
     def resize(self, width, height):
+
         self.width = width
         self.height = height
+        self.screenRect.max.x = width
+        self.screenRect.max.y = height
         gl.glViewport(0, 0, width, height)
         gl.glMatrixMode(gl.GL_PROJECTION)
         gl.glLoadIdentity()
@@ -177,6 +206,10 @@ class Game(object):
         gl.glMatrixMode(gl.GL_MODELVIEW)
 
     def update(self, dt):
+
+        if len(self.points) < 2000:
+            for i in range(6):
+                self.points.append(Particle())
 
         if pyglet.window.key.E in self.keys:
             unit = Unit('data/player.png', 'unit')
@@ -221,10 +254,39 @@ class Game(object):
         for unit in self.units:
             unit.update(dt)
 
+        self.simulate_points(dt)
+
+    def simulate_points(self, dt):
+        for point in self.points:
+            if not self.screenRect.check_aabb(point.rect):
+                point.__init__()
+            force = vector.Vector(2, data=[0, point.mass * -9.81])
+            acceleration = force / point.mass
+            point.velocity += acceleration * dt
+            point.position += point.velocity * dt
+            point.update(dt)
+
+    def render_points(self):
+        renderPoints = []
+        for point in self.points:
+            renderPoints.extend(point.position.vector)
+
+        self.ctPoints = (gl.GLfloat * len(renderPoints))(*renderPoints)
+
+        point_ptr = ct.cast(self.ctPoints, ct.c_void_p)
+
+        gl.glColor3f(1.0, 1.0, 1.0)
+        gl.glEnableClientState(gl.GL_VERTEX_ARRAY)
+        gl.glVertexPointer(2, gl.GL_FLOAT, 0, point_ptr)
+        gl.glDrawArrays(gl.GL_POINTS, 0, len(renderPoints)//2)
+        gl.glDisableClientState(gl.GL_VERTEX_ARRAY)
+
     def render(self):
         self.engine.window.switch_to()
         gl.glClear(gl.GL_COLOR_BUFFER_BIT | gl.GL_DEPTH_BUFFER_BIT)
         gl.glClearColor(0.5, 0.5, 0.5, 1.0)
+
+        self.render_points()
 
         for unit in self.units:
             if unit in self.unitsSelected:
