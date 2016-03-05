@@ -101,41 +101,52 @@ class Unit(BoundingBoxMixin):
         super(Unit, self).__init__()
         img = pyglet.image.load('data/player.png')
         self.sprite = pyglet.sprite.Sprite(img)
-        self.pos = vector.Vector(2)
+
+        self.position = vector.Vector(2)
+
         self.rect = Rect(vector.Vector(2), vector.Vector(2))
+
         self.width = self.sprite.width
         self.height = self.sprite.height
+
+        self.size = vector.Vector(2, data=[self.width, self.height])
+
+        self.lenVelocity = vector.Vector(2, data=[random.random()*10, random.random()*10])
+        self.mass = 1.0
+        self.angVelocity = 0.0
+        self.angle = 0.0
+        self.momentOfInertia = (self.size.dot(self.size) * self.mass) / 12
+        self.torqe = vector.Vector(2)
+
         self.set_bb_color(0.0, 0.0, 0.0)
         self.update_rect()
 
     def update_rect(self):
-        self.rect.min = self.pos
-        self.rect.max.x = self.pos.x + self.width
-        self.rect.max.y = self.pos.y + self.height
+        self.rect.min = self.position
+        self.rect.max.x = self.position.x + self.width
+        self.rect.max.y = self.position.y + self.height
 
     def set_pos(self, vec):
-        self.pos = vec.clone()
-
-        self.update_rect()
+        self.position = vec.clone()
 
     def update(self, dt):
-        self.sprite.x = self.pos.x
-        self.sprite.y = self.pos.y
-
+        self.sprite.x = self.position.x
+        self.sprite.y = self.position.y
+        self.sprite.rotation = math.degrees(self.angle)
+        self.update_rect()
 
     def render(self):
         self.sprite.draw()
 
+
 class Particle(object):
-    def __init__(self):
-        pos = [random.random()*1280.0, 720.0]
+    def __init__(self, x,y):
+        pos = [x, y]
         self.position = vector.Vector(2, data=pos)
         self.velocity = vector.Vector(2, data=[random.random()*10, random.random()*10])
         self.mass = 1.0 + random.random()
-        self.rect = Rect(self.position.clone(), self.position.clone())
+        self.rect = Rect(self.position, self.position)
 
-    def update(self, dt):
-        self.rect = Rect(self.position.clone(), self.position.clone())
 
 class Game(object):
     def __init__(self):
@@ -160,8 +171,8 @@ class Game(object):
         self.mouseButtons = []
 
         self.points = []
-        for i in range(10):
-            self.points.append(Particle())
+        #for i in range(10):
+        #    self.points.append(Particle(random.random()*self.width, self.height))
         self.ctPoints = None
 
         self.keys = []
@@ -207,18 +218,23 @@ class Game(object):
 
     def update(self, dt):
 
-        if len(self.points) < 2000:
-            for i in range(6):
-                self.points.append(Particle())
+        #if len(self.points) < 2000:
+        #    for i in range(6):
+        #        self.points.append(Particle(random.random()*self.width, self.height))
 
         if pyglet.window.key.E in self.keys:
             unit = Unit('data/player.png', 'unit')
             unit.set_pos(self.mousePos)
             self.units.append(unit)
+
+        elif pyglet.window.key.Q in self.keys:
+            for i in range(6):
+                self.points.append(Particle(self.mousePos.x, self.mousePos.y))
+
         elif pyglet.window.key.M in self.keys:
             speedPerTick = 100.0 * dt
             for obj in self.unitsSelected:
-                objMin = obj.pos
+                objMin = obj.position
 
                 delta = self.mousePos - objMin
 
@@ -233,6 +249,7 @@ class Game(object):
                     final = self.mousePos
 
                 obj.set_pos(final)
+
         elif pyglet.window.key.DELETE in self.keys:
             for obj in self.unitsSelected:
                 self.units.remove(obj)
@@ -255,16 +272,32 @@ class Game(object):
             unit.update(dt)
 
         self.simulate_points(dt)
+        self.simulate_bodies(dt)
 
     def simulate_points(self, dt):
         for point in self.points:
             if not self.screenRect.check_aabb(point.rect):
-                point.__init__()
+                self.points.remove(point)
+                # point.__init__(random.random()*self.width, self.height)
             force = vector.Vector(2, data=[0, point.mass * -9.81])
             acceleration = force / point.mass
             point.velocity += acceleration * dt
             point.position += point.velocity * dt
-            point.update(dt)
+
+    def simulate_bodies(self, dt):
+        for unit in self.units:
+            # calc force
+            force = vector.Vector(2, data=[0,  unit.mass * -9.81])
+            half = unit.size / 2
+            unit.torque = half.x * force.y - half.y * force.x
+            lenAcceleration = force / unit.mass
+            unit.lenVelocity += lenAcceleration * dt
+            unit.position += unit.lenVelocity * dt
+
+            angAcceleration = unit.torque / unit.momentOfInertia
+            unit.angVelocity += angAcceleration * dt
+            unit.angle += unit.angVelocity * dt
+
 
     def render_points(self):
         renderPoints = []
